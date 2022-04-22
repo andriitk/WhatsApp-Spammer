@@ -2,20 +2,20 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from pyfiglet import Figlet
 from time import sleep
+import keyboard
+import datetime
+import random
 
-PATH = 'chromedriver.exe'
-options = webdriver.ChromeOptions()
-# options.add_argument('headless')
-
-driver = webdriver.Chrome(executable_path=PATH, options=options)
+SER = Service("chromedriver.exe")
 
 
 def get_file_lines(filename: str):
     try:
         with open(filename, encoding="utf-8") as f:
             symbols = f.read().split("\n")
-            symbols = set(symbols)
             symbols = list(symbols)
             return symbols
     except FileNotFoundError:
@@ -23,28 +23,36 @@ def get_file_lines(filename: str):
         exit()
 
 
-def send_wa_msg(phone_numbers: list, text):
+def send_wa_msg(phone_numbers: list, text: list):
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    driver = webdriver.Chrome(service=SER, options=options)
+
     try:
         driver.get(url='https://web.whatsapp.com/')
-        sleep(10)
+        sleep(15)
 
         for number in phone_numbers:
             number = number.strip()
             try:
                 driver.get(url=f'https://web.whatsapp.com/send?phone={number}')
-                WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH,
+                WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.XPATH,
                                                                                   '/html/body/div[1]/div/div/div[4]/div/footer/div[1]/div/span[2]/div/div[2]/div[1]/div/div[2]')))
                 text_box = driver.find_element(By.XPATH,
                                                '/html/body/div[1]/div/div/div[4]/div/footer/div[1]/div/span[2]/div/div[2]/div[1]/div/div[2]')
-                sleep(5)
-                text_box.send_keys(text)
-                text_box.send_keys('\n')
+                for line in text:
+                    text_box.send_keys(line.strip())
+                    text_box.send_keys(' ' * 180)
+                keyboard.send('enter')
+                cur_time = datetime.datetime.now().strftime("%H:%M:%S")
+                print(
+                    f'\033[32m\033[1m[{cur_time} - GOOD]\033[0m \033[33m\033[1mMessage to\033[0m \033[31m\033[1m{number}\033[0m \033[33m\033[1msent successfully!\033[0m')
+                sleep(random.randint(2, 5))
 
-                print(f'The message was sent to {number} sent success!')
-                sleep(5)
-
-            except Exception as ex:
-                print(f'The message wasn`t sent to {number} (((')
+            except:
+                cur_time = datetime.datetime.now().strftime("%H:%M:%S")
+                print(
+                    f'\033[31m\033[1m[{cur_time} - BAD]\033[0m \033[33m\033[1mMessage wasn`t sent to \033[31m\033[1m{number}\033[0m \033[33m\033[1m(((\033[0m')
 
     except Exception as ex:
         print(ex)
@@ -56,9 +64,13 @@ def send_wa_msg(phone_numbers: list, text):
 
 
 def main():
+    preview_text = Figlet(font='doom', width=200)
+    title = preview_text.renderText('W h a t s A p p     S p a m m e r')
+    print(f'\033[32m\033[1m{title}\033[0m')
+    print("\033[32m\033[1m-\033[0m" * 125 + '\n')
+
     with open('text.txt', encoding='utf-8') as f:
-        text = f.read()
-    text = text
+        text = f.readlines()
     phone_numbers = get_file_lines('phone_numbers.txt')
     send_wa_msg(phone_numbers=phone_numbers, text=text)
 
